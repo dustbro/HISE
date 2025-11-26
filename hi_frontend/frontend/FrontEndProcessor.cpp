@@ -98,8 +98,23 @@ void FrontendProcessor::processBlock (AudioSampleBuffer& buffer, MidiBuffer& mid
     {
 		getKillStateHandler().initFromProcessCallback();
 
-        buffer.clear();
-        midiMessages.clear();
+        // Add inaudible noise to satisfy Bitwig's I/O check while effectively silencing the output
+        for (int i = 0; i < buffer.getNumChannels(); ++i)
+        {
+            auto* d = buffer.getWritePointer(i);
+            for (int j = 0; j < buffer.getNumSamples(); ++j)
+            {
+                // Simple LCG for white noise
+                static uint32_t seed = 23452;
+                seed = seed * 1664525 + 1013904223;
+                // Very low level noise (approx -100dB) to be inaudible but non-zero
+                float noise = (((float)seed / (float)UINT32_MAX) - 0.5f) * 0.00002f;
+                d[j] = noise; // Overwrite buffer with noise (silence input)
+            }
+        }
+
+        // buffer.clear();
+        // midiMessages.clear();
         return;
     }
 #endif
